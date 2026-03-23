@@ -57,53 +57,60 @@
           carregarDados(map, idAba, infowindow, AdvancedMarkerElement, PinElement);
         });
       }
+function carregarDados(map, abaNome, infowindow, AdvancedMarkerElement, PinElement) {
+  // Pedimos um intervalo grande (A1:Z5000) para garantir que apanha tudo
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${abaNome}!A1:Z5000?key=${API_KEY}`;
+  const corAba = CONFIG_ABAS[abaNome].cor;
 
-      function carregarDados(map, abaNome, infowindow, AdvancedMarkerElement, PinElement) {
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${abaNome}?key=${API_KEY}`;
-        const corAba = CONFIG_ABAS[abaNome].cor;
-
-        fetch(url)
-          .then(res => res.json())
-          .then(data => {
-            if (!data.values) return;
-
-            const rows = data.values;
-            for (let i = 1; i < rows.length; i++) {
-              const linha = rows[i];
-              const lat = parseFloat(linha[5]?.replace(',', '.'));
-              const lng = parseFloat(linha[6]?.replace(',', '.'));
-              const cidade = linha[1];
-
-              if (!isNaN(lat) && !isNaN(lng)) {
-                // 3. CRIAR O PIN COLORIDO
-                const pin = new PinElement({
-                  background: corAba,
-                  borderColor: "#FFF",
-                  glyphColor: "#FFF",
-                });
-
-                const marker = new AdvancedMarkerElement({
-                  map: map,
-                  position: { lat: lat, lng: lng },
-                  title: cidade,
-                  content: pin.element, // Aplica a cor aqui
-                });
-
-                marker.addListener("click", () => {
-                  infowindow.setContent(`
-                    <div style="padding:5px">
-                      <strong>${cidade}</strong><br>
-                      Categoria: ${CONFIG_ABAS[abaNome].nome}<br>
-                      Frete Lumar: R$ ${linha[11] || 'N/A'}
-                    </div>
-                  `);
-                  infowindow.open(map, marker);
-                });
-              }
-            }
-          })
-          .catch(err => console.error("Erro na aba " + abaNome, err));
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      if (!data.values) {
+        console.warn("Aba " + abaNome + " vazia ou não encontrada.");
+        return;
       }
+
+      const rows = data.values;
+      console.log(`Aba ${abaNome}: Lidas ${rows.length} linhas.`);
+
+      for (let i = 1; i < rows.length; i++) {
+        const linha = rows[i];
+        
+        // Limpeza dos dados: remove espaços e troca vírgula por ponto
+        let rawLat = String(linha[5] || "").replace(',', '.').trim();
+        let rawLng = String(linha[6] || "").replace(',', '.').trim();
+        
+        const lat = parseFloat(rawLat);
+        const lng = parseFloat(rawLng);
+        const cidade = linha[1] || "Cidade Desconhecida";
+
+        // Só cria o marcador se os números forem válidos
+        if (!isNaN(lat) && !isNaN(lng)) {
+          const pin = new PinElement({
+            background: corAba,
+            borderColor: "#FFF",
+            glyphColor: "#FFF",
+          });
+
+          const marker = new AdvancedMarkerElement({
+            map: map,
+            position: { lat: lat, lng: lng },
+            title: cidade,
+            content: pin.element,
+          });
+
+          marker.addListener("click", () => {
+            infowindow.setContent(`<strong>${cidade}</strong><br>Frete: ${linha[11] || 'N/A'}`);
+            infowindow.open(map, marker);
+          });
+        } else {
+          // Log para sabermos qual linha está com problema
+          console.log(`Linha ${i+1} da Aba ${abaNome} ignorada (Lat/Lng inválida):`, linha[5], linha[6]);
+        }
+      }
+    })
+    .catch(err => console.error("Erro na aba " + abaNome, err));
+}
 
       window.onload = initMap;
     </script>
