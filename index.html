@@ -1,74 +1,111 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>LogMEF - Mapa de Fretes</title>
+    <title>LogMEF - Mapa de Fretes por Categoria</title>
     <style>
       #map { height: 100vh; width: 100%; }
-      body { margin: 0; font-family: sans-serif; }
+      body { margin: 0; font-family: 'Segoe UI', sans-serif; }
+      /* Estilo da Legenda */
+      #legend {
+        background: white; padding: 10px; margin: 10px;
+        border: 1px solid #ccc; border-radius: 5px; line-height: 1.5;
+      }
+      .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+      .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
     </style>
   </head>
   <body>
     <div id="map"></div>
+    
+    <div id="legend">
+      <strong>Categorias de Frete</strong>
+      <div class="legend-item"><span class="dot" style="background: #4285F4;"></span> Aba 3</div>
+      <div class="legend-item"><span class="dot" style="background: #FBBC04;"></span> Aba 5</div>
+      <div class="legend-item"><span class="dot" style="background: #EA4335;"></span> Aba 7</div>
+    </div>
 
     <script>
-      // 1. CONFIGURAÇÕES
       const API_KEY = 'AIzaSyAfxWHsTHYmQQTnuvQrpNouqnQJ7Suv9BY'; 
       const SPREADSHEET_ID = '1l864xm1rG_frLbkfAZGSBfJWpVF9B5TcgBfgSUFadlg';
-      
-      // SUBSTITUA PELO NOME REAL DA ABA (Ex: 'Folha1', 'Cidades', 'Fretes')
-      const ABAS_PARA_CARREGAR = ['3']; 
+
+      // 1. DEFINIÇÃO DAS CORES POR ABA
+      const CONFIG_ABAS = {
+        '3': { cor: '#4285F4', nome: 'Frete Tipo 3' }, // Azul
+        '5': { cor: '#FBBC04', nome: 'Frete Tipo 5' }, // Amarelo/Laranja
+        '7': { cor: '#EA4335', nome: 'Frete Tipo 7' }  // Vermelho
+      };
+
+      (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await a;m.head.append(k=m.createElement("script"));e.set("libraries",[...r]+"");for(k.src=`https://maps.${c}apis.com/maps/api/js?`+e;k.onerror=()=>n(Error(p+" could not load."));k.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(k);f()}));d[l]?console.warn(p+" only loads once. Re-referencing: ",d[l]):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n));a=new Promise(f=>setTimeout(f));k=m.createElement("script");e.set("key",API_KEY);e.set("callback",c+".maps."+q);b[c][q]=f=>a=f;u()})({});
 
       async function initMap() {
-        // Importar bibliotecas necessárias (Nova norma da Google)
         const { Map } = await google.maps.importLibrary("maps");
-        const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+        const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
 
         const map = new Map(document.getElementById("map"), {
-          zoom: 5,
+          zoom: 4,
           center: { lat: -15.78, lng: -47.92 },
-          mapId: "DEMO_MAP_ID", // Necessário para Advanced Markers
+          mapId: "DEMO_MAP_ID",
         });
+
+        // Adiciona a legenda ao mapa
+        map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(document.getElementById("legend"));
 
         const infowindow = new google.maps.InfoWindow();
 
-        ABAS_PARA_CARREGAR.forEach(aba => {
-          carregarDados(map, aba, infowindow, AdvancedMarkerElement);
+        // 2. CARREGAR CADA ABA COM A SUA COR
+        Object.keys(CONFIG_ABAS).forEach(idAba => {
+          carregarDados(map, idAba, infowindow, AdvancedMarkerElement, PinElement);
         });
       }
 
-      function carregarDados(map, abaNome, infowindow, AdvancedMarkerElement) {
+      function carregarDados(map, abaNome, infowindow, AdvancedMarkerElement, PinElement) {
         const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${abaNome}?key=${API_KEY}`;
+        const corAba = CONFIG_ABAS[abaNome].cor;
 
         fetch(url)
           .then(res => res.json())
           .then(data => {
-            const rows = data.values;
-            if (!rows || rows.length <= 1) return;
+            if (!data.values) return;
 
+            const rows = data.values;
             for (let i = 1; i < rows.length; i++) {
               const linha = rows[i];
-              const lat = parseFloat(linha[5]); // Coluna F
-              const lng = parseFloat(linha[6]); // Coluna G
-              const cidade = linha[1];          // Coluna B
+              const lat = parseFloat(linha[5]?.replace(',', '.'));
+              const lng = parseFloat(linha[6]?.replace(',', '.'));
+              const cidade = linha[1];
 
               if (!isNaN(lat) && !isNaN(lng)) {
+                // 3. CRIAR O PIN COLORIDO
+                const pin = new PinElement({
+                  background: corAba,
+                  borderColor: "#FFF",
+                  glyphColor: "#FFF",
+                });
+
                 const marker = new AdvancedMarkerElement({
                   map: map,
                   position: { lat: lat, lng: lng },
                   title: cidade,
+                  content: pin.element, // Aplica a cor aqui
                 });
 
                 marker.addListener("click", () => {
-                  infowindow.setContent(`<strong>${cidade}</strong><br>Frete: ${linha[11]}`);
+                  infowindow.setContent(`
+                    <div style="padding:5px">
+                      <strong>${cidade}</strong><br>
+                      Categoria: ${CONFIG_ABAS[abaNome].nome}<br>
+                      Frete Lumar: R$ ${linha[11] || 'N/A'}
+                    </div>
+                  `);
                   infowindow.open(map, marker);
                 });
               }
             }
           })
-          .catch(err => console.error("Erro ao carregar aba:", err));
+          .catch(err => console.error("Erro na aba " + abaNome, err));
       }
-    </script>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAfxWHsTHYmQQTnuvQrpNouqnQJ7Suv9BY&callback=initMap&v=beta&libraries=marker" async defer></script>
+      window.onload = initMap;
+    </script>
   </body>
 </html>
