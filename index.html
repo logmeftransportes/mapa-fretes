@@ -11,8 +11,8 @@
     <div id="map"></div>
 
     <script>
-      // 1. CONFIGURAÇÕES - INSIRA SEUS DADOS AQUI
-      const API_KEY = 'AIzaSyAfxWHsTHYmQQTnuvQrpNouqnQJ7Suv9BY'; 
+      // 1. CONFIGURAÃ‡Ã•ES - INSIRA SEUS DADOS AQUI
+      const API_KEY = 'AIzaSyCl_imnR_MzDo3xT7QmAC-sBn-YzwMuc9c'; 
       const SPREADSHEET_ID = 'https://docs.google.com/spreadsheets/d/1l864xm1rG_frLbkfAZGSBfJWpVF9B5TcgBfgSUFadlg/edit?usp=sharing';
       // Coloque aqui os nomes exatos das suas abas filtradas
       const ABAS_PARA_CARREGAR = ['3','5','7']; 
@@ -40,7 +40,7 @@
             const rows = data.values;
             if (!rows || rows.length <= 1) return;
 
-            // Começamos em i = 1 para pular o cabeçalho
+            // ComeÃ§amos em i = 1 para pular o cabeÃ§alho
             for (let i = 1; i < rows.length; i++) {
               const linha = rows[i];
               
@@ -84,7 +84,7 @@
             // O mapeamento das colunas depende da ordem na sua planilha
             // Exemplo: 0=Cidade, 1=Estado, 2=Lat, 3=Lng, 4=Valor Frete
             for (let i = 1; i < rows.length; i++) {
-              const [codigo_ibge, Cidade, UF, Descrição, Região, lat, lng, codigo_uf, siafi_id, ddd, Entrega, FreteLumar] = rows[i];
+              const [codigo_ibge, Cidade, UF, DescriÃ§Ã£o, RegiÃ£o, lat, lng, codigo_uf, siafi_id, ddd, Entrega, FreteLumar] = rows[i];
 
               if (lat && lng) {
                 const marker = new google.maps.Marker({
@@ -107,6 +107,6 @@
           });
       }
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAfxWHsTHYmQQTnuvQrpNouqnQJ7Suv9BY&callback=initMap" async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCl_imnR_MzDo3xT7QmAC-sBn-YzwMuc9c&callback=initMap" async defer></script>
   </body>
 </html>
