@@ -1,82 +1,74 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Mapa de Fretes - Cidades</title>
+    <title>LogMEF - Mapa de Fretes</title>
     <style>
       #map { height: 100vh; width: 100%; }
-      body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+      body { margin: 0; font-family: sans-serif; }
     </style>
   </head>
   <body>
     <div id="map"></div>
 
     <script>
-      // 1. CONFIGURAÇÕES - INSIRA SEUS DADOS AQUI
+      // 1. CONFIGURAÇÕES
       const API_KEY = 'AIzaSyAfxWHsTHYmQQTnuvQrpNouqnQJ7Suv9BY'; 
       const SPREADSHEET_ID = '1l864xm1rG_frLbkfAZGSBfJWpVF9B5TcgBfgSUFadlg';
-      // Coloque aqui os nomes exatos das suas abas filtradas
-      const ABAS_PARA_CARREGAR = [3,5,7]; 
+      
+      // SUBSTITUA PELO NOME REAL DA ABA (Ex: 'Folha1', 'Cidades', 'Fretes')
+      const ABAS_PARA_CARREGAR = ['7']; 
 
-      function initMap() {
-        const map = new google.maps.Map(document.getElementById("map"), {
+      async function initMap() {
+        // Importar bibliotecas necessárias (Nova norma da Google)
+        const { Map } = await google.maps.importLibrary("maps");
+        const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+
+        const map = new Map(document.getElementById("map"), {
           zoom: 5,
-          center: { lat: -15.7801, lng: -47.9292 }, // Centralizado no Brasil
+          center: { lat: -15.78, lng: -47.92 },
+          mapId: "DEMO_MAP_ID", // Necessário para Advanced Markers
         });
 
         const infowindow = new google.maps.InfoWindow();
 
         ABAS_PARA_CARREGAR.forEach(aba => {
-          carregarDadosDaPlanilha(map, aba, infowindow);
+          carregarDados(map, aba, infowindow, AdvancedMarkerElement);
         });
       }
 
-      function carregarDadosDaPlanilha(map, abaNome, infowindow) {
-        // Endpoint da API v4
+      function carregarDados(map, abaNome, infowindow, AdvancedMarkerElement) {
         const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${abaNome}?key=${API_KEY}`;
 
         fetch(url)
-          .then(response => response.json())
+          .then(res => res.json())
           .then(data => {
             const rows = data.values;
             if (!rows || rows.length <= 1) return;
 
-            // Começamos em i = 1 para pular o cabeçalho
             for (let i = 1; i < rows.length; i++) {
               const linha = rows[i];
-              
-              // MAPEAMENTO SEGUNDO A SUA LISTA:
-              const cidade    = linha[1]; // Coluna B
-              const uf        = linha[2]; // Coluna C
-              const descricao = linha[3]; // Coluna D
-              const lat       = parseFloat(linha[5]); // Coluna F (Latitude)
-              const lng       = parseFloat(linha[6]); // Coluna G (Longitude)
-              const frete     = linha[11]; // Coluna L (FreteLumar)
+              const lat = parseFloat(linha[5]); // Coluna F
+              const lng = parseFloat(linha[6]); // Coluna G
+              const cidade = linha[1];          // Coluna B
 
               if (!isNaN(lat) && !isNaN(lng)) {
-                const marker = new google.maps.Marker({
-                  position: { lat: lat, lng: lng },
+                const marker = new AdvancedMarkerElement({
                   map: map,
-                  title: cidade
+                  position: { lat: lat, lng: lng },
+                  title: cidade,
                 });
 
                 marker.addListener("click", () => {
-                  const conteudo = `
-                    <div style="line-height:1.4;">
-                      <strong>${cidade} - ${uf}</strong><br>
-                      <small>${descricao}</small><hr>
-                      <b>Frete Lumar:</b> R$ ${frete || 'N/A'}<br>
-                      <b>Entrega:</b> ${linha[10] || 'N/A'}
-                    </div>
-                  `;
-                  infowindow.setContent(conteudo);
+                  infowindow.setContent(`<strong>${cidade}</strong><br>Frete: ${linha[11]}`);
                   infowindow.open(map, marker);
                 });
               }
             }
           })
-          .catch(err => console.error("Erro ao ler aba " + abaNome, err));
+          .catch(err => console.error("Erro ao carregar aba:", err));
       }
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAfxWHsTHYmQQTnuvQrpNouqnQJ7Suv9BY&callback=initMap" async defer></script>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAfxWHsTHYmQQTnuvQrpNouqnQJ7Suv9BY&callback=initMap&v=beta&libraries=marker" async defer></script>
   </body>
 </html>
